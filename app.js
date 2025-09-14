@@ -272,26 +272,14 @@ const loginDelayMiddleware = async (req, res, next) => {
   await new Promise(resolve => setTimeout(resolve, 1000));
   next();
 };
-app.get('/login', async (req, res) => {
+app.get('/login', (req, res) => {
   if (req.session.userId) {
     return res.redirect('/dashboard');
   }
-  try {
-    const usersExist = await checkIfUsersExist();
-    if (!usersExist) {
-      return res.redirect('/setup-account');
-    }
-    res.render('login', {
-      title: 'Login',
-      error: null
-    });
-  } catch (error) {
-    console.error('Error checking for users:', error);
-    res.render('login', {
-      title: 'Login',
-      error: 'System error. Please try again.'
-    });
-  }
+  res.render('login', {
+    title: 'Login',
+    error: null
+  });
 });
 app.post('/login', loginDelayMiddleware, loginLimiter, async (req, res) => {
   const { username, password } = req.body;
@@ -325,29 +313,16 @@ app.get('/logout', (req, res) => {
   req.session.destroy();
   res.redirect('/login');
 });
-app.get('/setup-account', async (req, res) => {
-  try {
-    const usersExist = await checkIfUsersExist();
-    if (usersExist && !req.session.userId) {
-      return res.redirect('/login');
-    }
-    if (req.session.userId) {
-      const user = await User.findById(req.session.userId);
-      if (user && user.username) {
-        return res.redirect('/dashboard');
-      }
-    }
-    res.render('setup-account', {
-      title: 'Complete Your Account',
-      user: req.session.userId ? await User.findById(req.session.userId) : {},
-      error: null
-    });
-  } catch (error) {
-    console.error('Setup account error:', error);
-    res.redirect('/login');
+app.get('/register', async (req, res) => {
+  if (req.session.userId) {
+    return res.redirect('/dashboard');
   }
+  res.render('register', {
+    title: 'Create an Account',
+    error: null
+  });
 });
-app.post('/setup-account', upload.single('avatar'), [
+app.post('/register', upload.single('avatar'), [
   body('username')
     .trim()
     .isLength({ min: 3, max: 20 })
@@ -355,11 +330,8 @@ app.post('/setup-account', upload.single('avatar'), [
     .matches(/^[a-zA-Z0-9_]+$/)
     .withMessage('Username can only contain letters, numbers, and underscores'),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
-    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
-    .matches(/[0-9]/).withMessage('Password must contain at least one number'),
+    .isLength({ min: 6 }) // Ganti menjadi minimal 6 karakter
+    .withMessage('Password must be at least 6 characters long'),
   body('confirmPassword')
     .custom((value, { req }) => value === req.body.password)
     .withMessage('Passwords do not match')
@@ -367,64 +339,45 @@ app.post('/setup-account', upload.single('avatar'), [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
-      return res.render('setup-account', {
-        title: 'Complete Your Account',
+      return res.render('register', {
+        title: 'Create an Account',
         user: { username: req.body.username || '' },
         error: errors.array()[0].msg
       });
     }
-    const existingUsername = await User.findByUsername(req.body.username);
-    if (existingUsername) {
-      return res.render('setup-account', {
-        title: 'Complete Your Account',
-        user: { email: req.body.email || '' },
+
+    const existingUser = await User.findByUsername(req.body.username);
+    if (existingUser) {
+      return res.render('register', {
+        title: 'Create an Account',
+        user: { username: req.body.username || '' },
         error: 'Username is already taken'
       });
     }
+    
     const avatarPath = req.file ? `/uploads/avatars/${req.file.filename}` : null;
-    const usersExist = await checkIfUsersExist();
-    if (!usersExist) {
-      try {
-        const userId = uuidv4();
-        await User.create({
-          id: userId,
-          username: req.body.username,
-          password: req.body.password,
-          avatar_path: avatarPath,
-        });
-        req.session.userId = userId;
-        req.session.username = req.body.username;
-        if (avatarPath) {
-          req.session.avatar_path = avatarPath;
-        }
-        return res.redirect('/dashboard');
-      } catch (error) {
-        console.error('User creation error:', error);
-        return res.render('setup-account', {
-          title: 'Complete Your Account',
-          user: {},
-          error: 'Failed to create user. Please try again.'
-        });
-      }
-    } else {
-      await User.update(req.session.userId, {
-        username: req.body.username,
-        password: req.body.password,
-        avatar_path: avatarPath,
-      });
-      req.session.username = req.body.username;
-      if (avatarPath) {
-        req.session.avatar_path = avatarPath;
-      }
-      res.redirect('/dashboard');
+    const userId = uuidv4();
+    
+    await User.create({
+      id: userId,
+      username: req.body.username,
+      password: req.body.password,
+      avatar_path: avatarPath,
+    });
+
+    req.session.userId = userId;
+    req.session.username = req.body.username;
+    if (avatarPath) {
+      req.session.avatar_path = avatarPath;
     }
+
+    res.redirect('/dashboard');
   } catch (error) {
-    console.error('Account setup error:', error);
-    res.render('setup-account', {
-      title: 'Complete Your Account',
-      user: { email: req.body.email || '' },
-      error: 'An error occurred. Please try again.'
+    console.error('Registration error:', error);
+    res.render('register', {
+      title: 'Create an Account',
+      user: { username: req.body.username || '' },
+      error: 'An error occurred during registration. Please try again.'
     });
   }
 });
@@ -628,16 +581,13 @@ app.post('/settings/profile', isAuthenticated, upload.single('avatar'), [
   }
 });
 app.post('/settings/password', isAuthenticated, [
-  body('currentPassword').notEmpty().withMessage('Current password is required'),
-  body('newPassword')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
-    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
-    .matches(/[0-9]/).withMessage('Password must contain at least one number'),
-  body('confirmPassword')
-    .custom((value, { req }) => value === req.body.newPassword)
-    .withMessage('Passwords do not match'),
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword')
+        .isLength({ min: 6 })
+        .withMessage('Password must be at least 6 characters long'),
+    body('confirmPassword')
+        .custom((value, { req }) => value === req.body.newPassword)
+        .withMessage('Passwords do not match'),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

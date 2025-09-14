@@ -60,10 +60,21 @@ async function buildFFmpegArgs(stream) {
       '-loglevel', 'error',
       '-re',
       '-fflags', '+genpts+igndts',
+      '-readrate', '1.05', // Menambahkan opsi readrate
       loopOption, loopValue,
       '-i', videoPath,
-      '-c:v', 'copy',
-      '-c:a', 'copy',
+      '-f', 'fifo', // Menambahkan opsi fifo
+      '-fifo_format', 'flv',
+      '-map', '0:v',
+      '-map', '0:a',
+      '-attempt_recovery', '1', // Menambahkan opsi pemulihan
+      '-max_recovery_attempts', '20',
+      '-recover_any_error', '1',
+      '-tag:v', '7',
+      '-tag:a', '10',
+      '-recovery_wait_time', '2',
+      '-flags', '+global_header',
+      '-c', 'copy',
       '-f', 'flv',
       rtmpUrl
     ];

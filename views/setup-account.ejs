@@ -101,8 +101,7 @@
                   <div class="w-full bg-gray-600 rounded-full h-1.5 mt-2">
                     <div id="password-strength" class="bg-red-500 h-1.5 rounded-full" style="width: 0%"></div>
                   </div>
-                  <p id="password-feedback" class="text-xs text-gray-400 mt-1">Use 8+ characters with letters, numbers &
-                    symbols</p>
+                  <p id="password-feedback" class="text-xs text-gray-400 mt-1">Use 6+ characters with letters & numbers</p>
                 </div>
               </div>
               
@@ -167,7 +166,7 @@
       strengthBar.style.width = strength.score * 25 + '%';
       if (strength.score === 0) {
         strengthBar.className = 'bg-gray-500 h-1.5 rounded-full';
-        feedback.textContent = 'Use 8+ characters with letters, numbers & symbols';
+        feedback.textContent = 'Use 6+ characters with letters & numbers;
         feedback.className = 'text-xs text-gray-400 mt-1';
       } else if (strength.score === 1) {
         strengthBar.className = 'bg-red-500 h-1.5 rounded-full';
@@ -203,13 +202,12 @@
     });
     function calculatePasswordStrength(password) {
       let score = 0;
-      if (password.length >= 8) score += 1;
-      if (password.length >= 12) score += 1;
-      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
-      if (/[0-9]/.test(password)) score += 0.5;
-      if (/[^a-zA-Z0-9]/.test(password)) score += 0.5;
+      if (password.length >= 6) {
+       	  score = 2; // Memberikan skor minimal 2 untuk panjang yang valid
+       	  if (password.length >= 10) score = 4; // Skor lebih tinggi untuk password yang lebih panjang
+      }
       return {
-        score: Math.min(4, Math.floor(score))
+          score: score
       };
     }
     document.getElementById('setupForm').addEventListener('submit', function (e) {
