@@ -78,7 +78,7 @@ git clone https://github.com/nemapedianew/streamflow-v2-modif
 
 Masuk ke direktori project:
 ```bash
-cd streamflow
+cd streamflow-v2-modif
 ```
 
 Install Paket Node.JS:
@@ -269,6 +269,7 @@ pm2 restart streamflow
 
 ---
 © 2025 - [Bang Tutorial](https://youtube.com/bangtutorial)
+
 
 
 
