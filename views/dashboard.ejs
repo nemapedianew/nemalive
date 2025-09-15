@@ -187,6 +187,7 @@
       </div>
       <div class="p-4 sm:px-6 pt-1 pb-4 overflow-y-auto flex-grow">
         <form id="newStreamForm" class="space-y-6">
+	  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" id="selectedVideoId" name="videoId" value="">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="space-y-4">
@@ -375,6 +376,7 @@
       <div class="p-4 sm:px-6 pt-1 pb-4 overflow-y-auto flex-grow">
         <form id="editStreamForm" class="space-y-6">
           <input type="hidden" id="editStreamId" name="streamId" value="">
+	  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" id="editSelectedVideoId" name="videoId" value="">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="space-y-4">
@@ -733,6 +735,8 @@
 </style>
 <script src="/js/stream-modal.js"></script>
 <script>
+  let editDesktopVideoPlayer = null;
+  let editMobileVideoPlayer = null;
   function formatMemory(value) {
     return typeof value === 'string' ? value : '0 MB';
   }
@@ -1397,6 +1401,33 @@
         restoreButtons();
       });
   }
+  function deleteStream(streamId) {
+      if (!streamId) return;
+      if (confirm('Are you sure you want to delete this stream? This action cannot be undone.')) {
+          const csrfToken = document.querySelector('input[name="_csrf"]')?.value;
+
+          fetch(`/api/streams/${streamId}`, {
+              method: 'DELETE',
+              headers: {
+                  'Content-Type': 'application/json',
+                  ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+              },
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  alert('Stream deleted successfully!');
+                  window.location.reload();
+              } else {
+                  alert(`Error: ${data.error || 'Failed to delete stream'}`);
+              }
+          })
+          .catch(error => {
+              console.error('Error deleting stream:', error);
+              alert('An error occurred while deleting the stream.');
+          });
+      }
+  }
   function editStream(streamId) {
     if (!streamId) return;
     fetch(`/api/streams/${streamId}`)
@@ -1433,39 +1464,39 @@
       }
     }
     document.getElementById('editLoopVideo').checked = stream.loop_video;
-    const bitrateSelect = document.getElementById('editBitrate');
-    for (let i = 0; i < bitrateSelect.options.length; i++) {
-      if (bitrateSelect.options[i].value == stream.bitrate) {
-        bitrateSelect.selectedIndex = i;
-        break;
-      }
-    }
-    currentEditOrientation = stream.orientation || 'horizontal';
-    setEditVideoOrientation(currentEditOrientation);
-    const resolutionSelect = document.getElementById('editResolutionSelect');
-    if (stream.resolution) {
-      let found = false;
-      for (let i = 0; i < resolutionSelect.options.length; i++) {
-        const option = resolutionSelect.options[i];
-        const resValue = option.getAttribute(`data-${currentEditOrientation}`);
-        if (resValue === stream.resolution) {
-          resolutionSelect.selectedIndex = i;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        resolutionSelect.value = "720";
-      }
-      updateEditResolutionDisplay();
-    }
-    const fpsSelect = document.getElementById('editFps');
-    for (let i = 0; i < fpsSelect.options.length; i++) {
-      if (fpsSelect.options[i].value == stream.fps) {
-        fpsSelect.selectedIndex = i;
-        break;
-      }
-    }
+    //const bitrateSelect = document.getElementById('editBitrate');
+    //for (let i = 0; i < bitrateSelect.options.length; i++) {
+    //  if (bitrateSelect.options[i].value == stream.bitrate) {
+    //    bitrateSelect.selectedIndex = i;
+    //    break;
+    //  }
+    //}
+    //currentEditOrientation = stream.orientation || 'horizontal';
+    //setEditVideoOrientation(currentEditOrientation);
+    //const resolutionSelect = document.getElementById('editResolutionSelect');
+    //if (stream.resolution) {
+    //  let found = false;
+    //  for (let i = 0; i < resolutionSelect.options.length; i++) {
+    //    const option = resolutionSelect.options[i];
+    //    const resValue = option.getAttribute(`data-${currentEditOrientation}`);
+    //    if (resValue === stream.resolution) {
+    //      resolutionSelect.selectedIndex = i;
+    //      found = true;
+    //      break;
+    //    }
+    //  }
+    //  if (!found) {
+    //    resolutionSelect.value = "720";
+    //  }
+    //  updateEditResolutionDisplay();
+    //}
+    //const fpsSelect = document.getElementById('editFps');
+    //for (let i = 0; i < fpsSelect.options.length; i++) {
+    //  if (fpsSelect.options[i].value == stream.fps) {
+    //    fpsSelect.selectedIndex = i;
+    //    break;
+    //  }
+    //}
     if (stream.schedule_time) {
       const scheduleDate = new Date(stream.schedule_time);
       const formattedDate = scheduleDate.toISOString().slice(0, 16);
@@ -1479,16 +1510,16 @@
       document.getElementById('editDuration').value = '';
     }
     // Karena Advanced Settings disembunyikan, ini tidak akan pernah dieksekusi
-    const advancedSettingsContent = document.getElementById('editAdvancedSettingsContent');
-    const advancedSettingsToggle = document.getElementById('editAdvancedSettingsToggle');
-    const icon = advancedSettingsToggle.querySelector('i');
-    if (stream.use_advanced_settings) {
-      advancedSettingsContent.classList.remove('hidden');
-      icon.style.transform = 'rotate(180deg)';
-    } else {
-      advancedSettingsContent.classList.add('hidden');
-      icon.style.transform = '';
-    }
+    //const advancedSettingsContent = document.getElementById('editAdvancedSettingsContent');
+    //const advancedSettingsToggle = document.getElementById('editAdvancedSettingsToggle');
+    //const icon = advancedSettingsToggle.querySelector('i');
+    //if (stream.use_advanced_settings) {
+    //  advancedSettingsContent.classList.remove('hidden');
+    //  icon.style.transform = 'rotate(180deg)';
+    //} else {
+    //  advancedSettingsContent.classList.add('hidden');
+    // icon.style.transform = '';
+    //}
     const modal = document.getElementById('editStreamModal');
     document.body.style.overflow = 'hidden';
     modal.classList.remove('hidden');

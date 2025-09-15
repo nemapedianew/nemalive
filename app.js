@@ -1270,14 +1270,15 @@ app.get('/api/streams/:id', isAuthenticated, async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch stream' });
   }
 });
-app.put('/api/streams/:id', isAuthenticated, async (req, res) => {
+app.put('/api/streams/:id', isAuthenticated, csrfProtection, [
+  body('streamTitle').trim().isLength({ min: 1 }).withMessage('Title is required'),
+  body('rtmpUrl').trim().isLength({ min: 1 }).withMessage('RTMP URL is required'),
+  body('streamKey').trim().isLength({ min: 1 }).withMessage('Stream key is required')
+], async (req, res) => {
   try {
-    const stream = await Stream.findById(req.params.id);
-    if (!stream) {
-      return res.status(404).json({ success: false, error: 'Stream not found' });
-    }
-    if (stream.user_id !== req.session.userId) {
-      return res.status(403).json({ success: false, error: 'Not authorized to update this stream' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: errors.array()[0].msg });
     }
     const updateData = {};
     if (req.body.streamTitle) updateData.title = req.body.streamTitle;
@@ -1317,7 +1318,7 @@ app.put('/api/streams/:id', isAuthenticated, async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to update stream' });
   }
 });
-app.delete('/api/streams/:id', isAuthenticated, async (req, res) => {
+app.delete('/api/streams/:id', isAuthenticated, csrfProtection, async (req, res) => {
   try {
     const stream = await Stream.findById(req.params.id);
     if (!stream) {
