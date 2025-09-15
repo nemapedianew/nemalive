@@ -314,72 +314,76 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 app.get('/register', async (req, res) => {
-  if (req.session.userId) {
-    return res.redirect('/dashboard');
-  }
-  res.render('register', {
-    title: 'Create an Account',
-    error: null
-  });
+  if (req.session.userId) {
+    return res.redirect('/dashboard');
+  }
+  res.render('register', {
+    title: 'Create an Account',
+    error: null
+  });
 });
 app.post('/register', upload.single('avatar'), [
-  body('username')
-    .trim()
-    .isLength({ min: 3, max: 20 })
-    .withMessage('Username must be between 3 and 20 characters')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
-  body('password')
-    .isLength({ min: 6 }) // Ganti menjadi minimal 6 karakter
-    .withMessage('Password must be at least 6 characters long'),
-  body('confirmPassword')
-    .custom((value, { req }) => value === req.body.password)
-    .withMessage('Passwords do not match')
+  body('username')
+    .trim()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('Username must be between 3 and 20 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+  body('confirmPassword')
+    .custom((value, { req }) => value === req.body.password)
+    .withMessage('Passwords do not match')
 ], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.render('register', {
-        title: 'Create an Account',
-        user: { username: req.body.username || '' },
-        error: errors.array()[0].msg
-      });
-    }
-
-    const existingUser = await User.findByUsername(req.body.username);
-    if (existingUser) {
-      return res.render('register', {
-        title: 'Create an Account',
-        user: { username: req.body.username || '' },
-        error: 'Username is already taken'
-      });
-    }
-    
-    const avatarPath = req.file ? `/uploads/avatars/${req.file.filename}` : null;
-    const userId = uuidv4();
-    
-    await User.create({
-      id: userId,
-      username: req.body.username,
-      password: req.body.password,
-      avatar_path: avatarPath,
-    });
-
-    req.session.userId = userId;
-    req.session.username = req.body.username;
-    if (avatarPath) {
-      req.session.avatar_path = avatarPath;
-    }
-
-    res.redirect('/dashboard');
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.render('register', {
-      title: 'Create an Account',
-      user: { username: req.body.username || '' },
-      error: 'An error occurred during registration. Please try again.'
-    });
-  }
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.render('register', {
+        title: 'Create an Account',
+        user: { username: req.body.username || '' },
+        error: errors.array()[0].msg
+      });
+    }
+    const diskStats = await systemMonitor.getSystemStats();
+    const requiredFreeSpace = 10 * 1024 * 1024 * 1024; // 10 GB dalam byte
+    if (diskStats.disk.free < requiredFreeSpace) {
+      return res.render('register', {
+        title: 'Create an Account',
+        user: { username: req.body.username || '' },
+        error: 'Registration is currently unavailable. No more space left on the server.'
+      });
+    }
+    const existingUser = await User.findByUsername(req.body.username);
+    if (existingUser) {
+      return res.render('register', {
+        title: 'Create an Account',
+        user: { username: req.body.username || '' },
+        error: 'Username is already taken'
+      });
+    }
+    const avatarPath = req.file ? `/uploads/avatars/${req.file.filename}` : null;
+    const userId = uuidv4();
+    await User.create({
+      id: userId,
+      username: req.body.username,
+      password: req.body.password,
+      avatar_path: avatarPath,
+    });
+    req.session.userId = userId;
+    req.session.username = req.body.username;
+    if (avatarPath) {
+      req.session.avatar_path = avatarPath;
+    }
+    res.redirect('/dashboard');
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.render('register', {
+      title: 'Create an Account',
+      user: { username: req.body.username || '' },
+      error: 'An error occurred during registration. Please try again.'
+    });
+  }
 });
 app.get('/', (req, res) => {
   res.redirect('/dashboard');
@@ -500,12 +504,46 @@ app.delete('/api/history/:id', isAuthenticated, async (req, res) => {
   }
 });
 app.get('/api/system-stats', isAuthenticated, async (req, res) => {
-  try {
-    const stats = await systemMonitor.getSystemStats();
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try {
+    const user = await User.findById(req.session.userId);
+    const totalVideoSize = await Video.getTotalSizeByUser(req.session.userId);
+    const totalSizeGB = 10; // Batas 10GB per pengguna
+    const totalSizeInBytes = totalSizeGB * 1024 * 1024 * 1024;
+    const usagePercent = totalSizeInBytes > 0 ? (totalVideoSize / totalSizeInBytes) * 100 : 0;
+    const formatSize = (bytes) => {
+        if (bytes >= 1073741824) {
+            return (bytes / 1073741824).toFixed(2) + " GB";
+        } else if (bytes >= 1048576) {
+            return (bytes / 1048576).toFixed(2) + " MB";
+        } else {
+            return (bytes).toFixed(2) + " bytes";
+        }
+    };
+    const userDiskStats = {
+      total: `${totalSizeGB} GB`,
+      used: formatSize(totalVideoSize),
+      usagePercent: Math.round(usagePercent),
+    };
+    const systemStats = await systemMonitor.getSystemStats();
+    res.json({
+        cpu: systemStats.cpu,
+        memory: systemStats.memory,
+        network: systemStats.network,
+        disk: userDiskStats,
+        platform: systemStats.platform,
+        timestamp: systemStats.timestamp
+    });
+  } catch (error) {
+    console.error('Error getting user disk stats:', error);
+    res.status(500).json({
+      cpu: { usage: 0, cores: 0 },
+      memory: { total: "0 GB", used: "0 GB", free: "0 GB", usagePercent: 0 },
+      network: { download: 0, upload: 0, downloadFormatted: '0 Mbps', uploadFormatted: '0 Mbps' },
+      disk: { total: "0 GB", used: "0 GB", free: "0 GB", usagePercent: 0 },
+      platform: "N/A",
+      timestamp: Date.now()
+    });
+  }
 });
 function getLocalIpAddresses() {
   const interfaces = os.networkInterfaces();
@@ -733,6 +771,18 @@ app.post('/upload/video', isAuthenticated, uploadVideo.single('video'), async (r
 });
 app.post('/api/videos/upload', isAuthenticated, videoUpload.single('video'), async (req, res) => {
   try {
+    const MAX_STORAGE_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB
+    const currentStorage = await Video.getTotalSizeByUser(req.session.userId);
+    const newVideoSize = req.file.size;
+    
+    if (currentStorage + newVideoSize > MAX_STORAGE_BYTES) {
+        // Hapus file yang baru diunggah untuk menghindari sisa file
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({
+            success: false,
+            error: `Storage limit exceeded. You have used ${formatSize(currentStorage)}. Cannot upload more than 10GB.`
+        });
+    }
     console.log('Upload request received:', req.file);
     
     if (!req.file) {

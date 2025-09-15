@@ -112,5 +112,19 @@ class Video {
         .catch(err => reject(err));
     });
   }
+  
+  static getTotalSizeByUser(userId) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT SUM(file_size) as totalSize FROM videos WHERE user_id = ?', [userId], (err, row) => {
+            if (err) {
+                console.error('Error getting total video size for user:', err.message);
+                return reject(err);
+            }
+            const totalSize = row.totalSize || 0;
+            console.log(`[Video Model] User ${userId} total video size: ${totalSize} bytes`);
+            resolve(totalSize);
+        });
+    });
+  }
 }
 module.exports = Video;

@@ -5,6 +5,9 @@ const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 const schedulerService = require('./schedulerService');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
+const Stream = require('../models/Stream');
+const Video = require('../models/Video');
+
 let ffmpegPath;
 if (fs.existsSync('/usr/bin/ffmpeg')) {
   ffmpegPath = '/usr/bin/ffmpeg';
@@ -13,14 +16,14 @@ if (fs.existsSync('/usr/bin/ffmpeg')) {
   ffmpegPath = ffmpegInstaller.path;
   console.log('Using bundled FFmpeg at:', ffmpegPath);
 }
-const Stream = require('../models/Stream');
-const Video = require('../models/Video');
+
 const activeStreams = new Map();
 const streamLogs = new Map();
 const streamRetryCount = new Map();
 const MAX_RETRY_ATTEMPTS = 3;
 const manuallyStoppingStreams = new Set();
 const MAX_LOG_LINES = 100;
+
 function addStreamLog(streamId, message) {
   if (!streamLogs.has(streamId)) {
     streamLogs.set(streamId, []);
@@ -34,6 +37,7 @@ function addStreamLog(streamId, message) {
     logs.shift();
   }
 }
+
 async function buildFFmpegArgs(stream) {
   const video = await Video.findById(stream.video_id);
   if (!video) {
@@ -52,22 +56,23 @@ async function buildFFmpegArgs(stream) {
     throw new Error('Video file not found on disk. Please check paths and file existence.');
   }
   const rtmpUrl = `${stream.rtmp_url.replace(/\/$/, '')}/${stream.stream_key}`;
-  const loopOption = stream.loop_video ? '-stream_loop' : '-stream_loop 0';
+  
   const loopValue = stream.loop_video ? '-1' : '0';
+  
   if (!stream.use_advanced_settings) {
     return [
       '-hwaccel', 'none',
       '-loglevel', 'error',
       '-re',
       '-fflags', '+genpts+igndts',
-      '-readrate', '1.05', // Menambahkan opsi readrate
-      loopOption, loopValue,
+      '-readrate', '1.05',
+      '-stream_loop', loopValue,
       '-i', videoPath,
-      '-f', 'fifo', // Menambahkan opsi fifo
+      '-f', 'fifo',
       '-fifo_format', 'flv',
       '-map', '0:v',
       '-map', '0:a',
-      '-attempt_recovery', '1', // Menambahkan opsi pemulihan
+      '-attempt_recovery', '1',
       '-max_recovery_attempts', '20',
       '-recover_any_error', '1',
       '-tag:v', '7',
@@ -79,14 +84,16 @@ async function buildFFmpegArgs(stream) {
       rtmpUrl
     ];
   }
+  
   const resolution = stream.resolution || '1280x720';
   const bitrate = stream.bitrate || 2500;
   const fps = stream.fps || 30;
+  
   return [
     '-hwaccel', 'none',
     '-loglevel', 'error',
     '-re',
-    loopOption, loopValue,
+    '-stream_loop', loopValue,
     '-i', videoPath,
     '-c:v', 'libx264',
     '-preset', 'veryfast',
@@ -104,6 +111,7 @@ async function buildFFmpegArgs(stream) {
     rtmpUrl
   ];
 }
+
 async function startStream(streamId) {
   try {
     streamRetryCount.set(streamId, 0);
