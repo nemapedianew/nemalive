@@ -23,7 +23,7 @@ sudo apt install ffmpeg git -y
 
 echo "📥 Clone repository..."
 git clone https://github.com/nemapedianew/streamflow-v2-modif
-cd streamflow
+cd streamflow-v2-modif
 
 echo "⚙️ Installing dependencies..."
 npm install
@@ -41,7 +41,7 @@ echo "🚀 Installing PM2..."
 sudo npm install -g pm2
 
 echo "▶️ Starting StreamFlow..."
-pm2 start app.js --name streamflow
+pm2 start app.js --name streamflow-v2-modif
 pm2 save
 
 echo
