@@ -55,39 +55,14 @@ async function buildFFmpegArgs(stream) {
     console.error(`[StreamingService] process.cwd(): ${process.cwd()}`);
     throw new Error('Video file not found on disk. Please check paths and file existence.');
   }
+
   const rtmpUrl = `${stream.rtmp_url.replace(/\/$/, '')}/${stream.stream_key}`;
-  
   const loopValue = stream.loop_video ? '-1' : '0';
-  
-  if (!stream.use_advanced_settings) {
-    return [
-      '-hwaccel', 'none',
-      '-loglevel', 'error',
-      '-re',
-      '-fflags', '+genpts+igndts',
-      '-readrate', '1.05',
-      '-stream_loop', loopValue,
-      '-i', videoPath,
-      '-f', 'fifo',
-      '-fifo_format', 'flv',
-      '-map', '0:v',
-      '-map', '0:a',
-      '-attempt_recovery', '1',
-      '-max_recovery_attempts', '20',
-      '-recover_any_error', '1',
-      '-tag:v', '7',
-      '-tag:a', '10',
-      '-recovery_wait_time', '2',
-      '-flags', '+global_header',
-      '-c', 'copy',
-      '-f', 'flv',
-      rtmpUrl
-    ];
-  }
-  
-  const resolution = stream.resolution || '1280x720';
-  const bitrate = stream.bitrate || 2500;
-  const fps = stream.fps || 30;
+
+  // Fallback ke nilai video jika stream tidak ada
+  const resolution = stream.resolution || video.resolution || '1280x720';
+  const bitrate = stream.bitrate || video.bitrate || 2500;
+  const fps = stream.fps || video.fps || 30;
   
   return [
     '-hwaccel', 'none',
@@ -101,7 +76,8 @@ async function buildFFmpegArgs(stream) {
     '-maxrate', `${bitrate * 1.5}k`,
     '-bufsize', `${bitrate * 2}k`,
     '-pix_fmt', 'yuv420p',
-    '-g', '60',
+    '-g', `${fps * 2}`,
+    '-keyint_min', `${fps * 2}`,
     '-s', resolution,
     '-r', fps.toString(),
     '-c:a', 'aac',
@@ -111,7 +87,6 @@ async function buildFFmpegArgs(stream) {
     rtmpUrl
   ];
 }
-
 async function startStream(streamId) {
   try {
     streamRetryCount.set(streamId, 0);
