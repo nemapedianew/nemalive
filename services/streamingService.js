@@ -5,9 +5,6 @@ const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 const schedulerService = require('./schedulerService');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
-const Stream = require('../models/Stream');
-const Video = require('../models/Video');
-
 let ffmpegPath;
 if (fs.existsSync('/usr/bin/ffmpeg')) {
   ffmpegPath = '/usr/bin/ffmpeg';
@@ -16,14 +13,14 @@ if (fs.existsSync('/usr/bin/ffmpeg')) {
   ffmpegPath = ffmpegInstaller.path;
   console.log('Using bundled FFmpeg at:', ffmpegPath);
 }
-
+const Stream = require('../models/Stream');
+const Video = require('../models/Video');
 const activeStreams = new Map();
 const streamLogs = new Map();
 const streamRetryCount = new Map();
 const MAX_RETRY_ATTEMPTS = 3;
 const manuallyStoppingStreams = new Set();
 const MAX_LOG_LINES = 100;
-
 function addStreamLog(streamId, message) {
   if (!streamLogs.has(streamId)) {
     streamLogs.set(streamId, []);
@@ -37,7 +34,6 @@ function addStreamLog(streamId, message) {
     logs.shift();
   }
 }
-
 async function buildFFmpegArgs(stream) {
   const video = await Video.findById(stream.video_id);
   if (!video) {
@@ -55,20 +51,31 @@ async function buildFFmpegArgs(stream) {
     console.error(`[StreamingService] process.cwd(): ${process.cwd()}`);
     throw new Error('Video file not found on disk. Please check paths and file existence.');
   }
-
   const rtmpUrl = `${stream.rtmp_url.replace(/\/$/, '')}/${stream.stream_key}`;
+  const loopOption = stream.loop_video ? '-stream_loop' : '-stream_loop 0';
   const loopValue = stream.loop_video ? '-1' : '0';
-
-  // Fallback ke nilai video jika stream tidak ada
-  const resolution = stream.resolution || video.resolution || '1280x720';
-  const bitrate = stream.bitrate || video.bitrate || 2500;
-  const fps = stream.fps || video.fps || 30;
-  
+  if (!stream.use_advanced_settings) {
+    return [
+      '-hwaccel', 'none',
+      '-loglevel', 'error',
+      '-re',
+      '-fflags', '+genpts+igndts',
+      loopOption, loopValue,
+      '-i', videoPath,
+      '-c:v', 'copy',
+      '-c:a', 'copy',
+      '-f', 'flv',
+      rtmpUrl
+    ];
+  }
+  const resolution = stream.resolution || '1280x720';
+  const bitrate = stream.bitrate || 2500;
+  const fps = stream.fps || 30;
   return [
     '-hwaccel', 'none',
     '-loglevel', 'error',
     '-re',
-    '-stream_loop', loopValue,
+    loopOption, loopValue,
     '-i', videoPath,
     '-c:v', 'libx264',
     '-preset', 'veryfast',
@@ -76,8 +83,7 @@ async function buildFFmpegArgs(stream) {
     '-maxrate', `${bitrate * 1.5}k`,
     '-bufsize', `${bitrate * 2}k`,
     '-pix_fmt', 'yuv420p',
-    '-g', `${fps * 2}`,
-    '-keyint_min', `${fps * 2}`,
+    '-g', '60',
     '-s', resolution,
     '-r', fps.toString(),
     '-c:a', 'aac',
