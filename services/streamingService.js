@@ -52,15 +52,14 @@ async function buildFFmpegArgs(stream) {
     throw new Error('Video file not found on disk. Please check paths and file existence.');
   }
   const rtmpUrl = `${stream.rtmp_url.replace(/\/$/, '')}/${stream.stream_key}`;
-  const loopOption = stream.loop_video ? '-stream_loop' : '-stream_loop 0';
-  const loopValue = stream.loop_video ? '-1' : '0';
+  const loopValue = '-1'; // Always loop
   if (!stream.use_advanced_settings) {
     return [
       '-hwaccel', 'none',
       '-loglevel', 'error',
       '-re',
       '-fflags', '+genpts+igndts',
-      loopOption, loopValue,
+      '-stream_loop', loopValue,
       '-i', videoPath,
       '-c:v', 'copy',
       '-c:a', 'copy',
@@ -75,7 +74,7 @@ async function buildFFmpegArgs(stream) {
     '-hwaccel', 'none',
     '-loglevel', 'error',
     '-re',
-    loopOption, loopValue,
+    '-stream_loop', loopValue,
     '-i', videoPath,
     '-c:v', 'libx264',
     '-preset', 'veryfast',
