@@ -30,7 +30,7 @@ StreamFlow adalah aplikasi live streaming yang memungkinkan kamu melakukan live 
 Untuk instalasi otomatis, jalankan perintah berikut:
 
 ```bash
-curl -o install.sh https://raw.githubusercontent.com/nemapedianew/streamflow-v2-modif/main/install.sh && chmod +x install.sh && ./install.sh
+curl -o install.sh https://raw.githubusercontent.com/nemapedianew/nemalive/main/install.sh && chmod +x install.sh && ./install.sh
 ```
 
 ## 🔧 Manual Installation
@@ -73,12 +73,12 @@ sudo apt install git -y
 
 Clone repository:
 ```bash
-git clone https://github.com/nemapedianew/streamflow-v2-modif
+git clone https://github.com/nemapedianew/nemalive
 ```
 
 Masuk ke direktori project:
 ```bash
-cd streamflow-v2-modif
+cd nemalive
 ```
 
 Install Paket Node.JS:
@@ -143,7 +143,7 @@ sudo npm install -g pm2
 
 Jalankan aplikasi dengan PM2:
 ```bash
-pm2 start app.js --name streamflow
+pm2 start app.js --name nemalive
 ```
 
 Akses aplikasi melalui browser:
@@ -269,6 +269,7 @@ pm2 restart streamflow
 
 ---
 © 2025 - [Bang Tutorial](https://youtube.com/bangtutorial)
+
 
 
 
