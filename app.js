@@ -346,7 +346,7 @@ app.post('/register', upload.single('avatar'), [
       });
     }
     const diskStats = await systemMonitor.getSystemStats();
-    const requiredFreeSpace = 10 * 1024 * 1024 * 1024; // 10 GB dalam byte
+    const requiredFreeSpace = 15 * 1024 * 1024 * 1024; // 15 GB dalam byte
     if (diskStats.disk.free < requiredFreeSpace) {
       return res.render('register', {
         title: 'Create an Account',
@@ -507,7 +507,7 @@ app.get('/api/system-stats', isAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.session.userId);
     const totalVideoSize = await Video.getTotalSizeByUser(req.session.userId);
-    const totalSizeGB = 10; // Batas 10GB per pengguna
+    const totalSizeGB = 15; // Batas 15GB per pengguna
     const totalSizeInBytes = totalSizeGB * 1024 * 1024 * 1024;
     const usagePercent = totalSizeInBytes > 0 ? (totalVideoSize / totalSizeInBytes) * 100 : 0;
     const formatSize = (bytes) => {
@@ -771,7 +771,7 @@ app.post('/upload/video', isAuthenticated, uploadVideo.single('video'), async (r
 });
 app.post('/api/videos/upload', isAuthenticated, videoUpload.single('video'), async (req, res) => {
   try {
-    const MAX_STORAGE_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB
+    const MAX_STORAGE_BYTES = 15 * 1024 * 1024 * 1024; // 15 GB
     const currentStorage = await Video.getTotalSizeByUser(req.session.userId);
     const newVideoSize = req.file.size;
     
@@ -780,7 +780,7 @@ app.post('/api/videos/upload', isAuthenticated, videoUpload.single('video'), asy
         fs.unlinkSync(req.file.path);
         return res.status(400).json({
             success: false,
-            error: `Storage limit exceeded. You have used ${formatSize(currentStorage)}. Cannot upload more than 10GB.`
+            error: `Storage limit exceeded. You have used ${formatSize(currentStorage)}. Cannot upload more than 15GB.`
         });
     }
     console.log('Upload request received:', req.file);
