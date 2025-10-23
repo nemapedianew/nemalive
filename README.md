@@ -69,7 +69,7 @@ Install Git:
 sudo apt install git -y
 ```
 
-### 2. Setup Project StreamFlow
+### 2. Setup Project Nemalive
 
 Clone repository:
 ```bash
@@ -161,7 +161,7 @@ Contoh: `http://88.12.34.56:7575`
 Jika lupa password atau perlu reset akun:
 
 ```bash
-cd streamflow && node reset-password.js
+cd nemalive && node reset-password.js
 ```
 
 ## ⏰ Pengaturan Timezone Server
@@ -242,7 +242,7 @@ sudo kill -9 <PID>
 rm db/*.db
 
 # Restart aplikasi untuk membuat database baru
-pm2 restart streamflow
+pm2 restart nemalive
 ```
 
 ### Docker Troubleshooting
@@ -269,6 +269,7 @@ pm2 restart streamflow
 
 ---
 © 2025 - [Bang Tutorial](https://youtube.com/bangtutorial)
+
 
 
 
