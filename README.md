@@ -73,7 +73,7 @@ sudo apt install git -y
 
 Clone repository:
 ```bash
-git clone https://github.com/nemapedianew/nemalive
+git clone https://github.com/nemapedianew/nemalive.git
 ```
 
 Masuk ke direktori project:
@@ -269,6 +269,7 @@ pm2 restart nemalive
 
 ---
 © 2025 - [Bang Tutorial](https://youtube.com/bangtutorial)
+
 
 
 
