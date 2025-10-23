@@ -3,7 +3,7 @@
 set -e
 
 echo "================================"
-echo "   StreamFlow Quick Installer  "
+echo "    Nemalive Quick Installer    "
 echo "================================"
 echo
 
@@ -22,8 +22,8 @@ echo "🎬 Installing FFmpeg dan Git..."
 sudo apt install ffmpeg git -y
 
 echo "📥 Clone repository..."
-git clone https://github.com/nemapedianew/streamflow-v2-modif
-cd streamflow-v2-modif
+git clone https://github.com/nemapedianew/nemalive
+cd nemalive
 
 echo "⚙️ Installing dependencies..."
 npm install
@@ -41,7 +41,7 @@ echo "🚀 Installing PM2..."
 sudo npm install -g pm2
 
 echo "▶️ Starting StreamFlow..."
-pm2 start app.js --name streamflow-v2-modif
+pm2 start app.js --name nemalive
 pm2 save
 
 echo
